@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../controllers/country_controller.dart';
 import '../controllers/theme_controller.dart';
+import '../models/country_model.dart';
 import '../routes/app_routes.dart';
 import '../widgets/country_card.dart';
 
@@ -15,11 +16,27 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      final CountryController controller = Get.find<CountryController>();
+      controller.loadNextPage();
+    }
   }
 
   @override
@@ -46,22 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => Get.toNamed(AppRoutes.favorites),
             tooltip: 'Favorites',
           ),
-          Obx(() {
-            final int count = controller.comparisonList.length;
-            return Badge(
-              isLabelVisible: count > 0,
-              label: Text('$count'),
-              child: IconButton(
-                icon: const Icon(Icons.compare_arrows),
-                onPressed: count == 2
-                    ? () => Get.toNamed(AppRoutes.comparison)
-                    : null,
-                tooltip: count == 2
-                    ? 'Compare Countries'
-                    : 'Select 2 countries to compare',
-              ),
-            );
-          }),
+          IconButton(
+            icon: const Icon(Icons.compare_arrows),
+            onPressed: () => Get.toNamed(AppRoutes.comparison),
+            tooltip: 'Compare Countries',
+          ),
         ],
       ),
       body: Column(
@@ -167,25 +173,11 @@ class _HomeScreenState extends State<HomeScreen> {
           // Country count
           Obx(() => Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${controller.filteredCountries.length} countries',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (controller.comparisonList.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: controller.clearComparison,
-                        icon: const Icon(Icons.clear, size: 16),
-                        label: Text(
-                          'Clear comparison (${controller.comparisonList.length}/2)',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  '${controller.filteredCountries.length} countries',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               )),
           const SizedBox(height: 4),
@@ -213,37 +205,25 @@ class _HomeScreenState extends State<HomeScreen> {
               return RefreshIndicator(
                 onRefresh: controller.fetchCountries,
                 child: ListView.builder(
+                  controller: _scrollController,
                   padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: controller.filteredCountries.length,
+                  itemCount: controller.displayedCountries.length +
+                      (controller.hasMorePages ? 1 : 0),
                   itemBuilder: (BuildContext context, int index) {
-                    final country = controller.filteredCountries[index];
-                    return Obx(() {
-                      final bool isComparing =
-                          controller.isInComparison(country.cca3);
-                      return GestureDetector(
-                        onLongPress: () =>
-                            controller.toggleComparison(country),
-                        child: Container(
-                          decoration: isComparing
-                              ? BoxDecoration(
-                                  border: Border.all(
-                                    color: theme.colorScheme.primary,
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                )
-                              : null,
-                          margin: isComparing
-                              ? const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 4)
-                              : EdgeInsets.zero,
-                          child: CountryCard(
-                            key: ValueKey(country.cca3),
-                            country: country,
-                          ),
+                    if (index >= controller.displayedCountries.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       );
-                    });
+                    }
+                    final CountryModel country =
+                        controller.displayedCountries[index];
+                    return CountryCard(
+                      key: ValueKey(country.cca3),
+                      country: country,
+                    );
                   },
                 ),
               );

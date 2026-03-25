@@ -22,11 +22,17 @@ class CountryController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxBool isSearching = false.obs;
   final RxBool isLoadingDetail = false.obs;
+  final RxBool isLoadingMore = false.obs;
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
   final RxString searchQuery = ''.obs;
   final RxString selectedRegion = 'All'.obs;
   final Rx<SortOption> currentSort = SortOption.nameAsc.obs;
+
+  /// The paginated slice shown in the UI.
+  final RxList<CountryModel> displayedCountries = <CountryModel>[].obs;
+  static const int pageSize = 20;
+  int _currentPage = 0;
 
   Timer? _searchDebounce;
 
@@ -228,6 +234,7 @@ class CountryController extends GetxController {
       }
       _sortList(filtered);
       filteredCountries.assignAll(filtered);
+      _resetPagination();
       _log('Displayed ${filtered.length} results after region filter');
     } catch (e) {
       _log('ERROR in _performApiSearch: $e — falling back to local filter');
@@ -280,6 +287,7 @@ class CountryController extends GetxController {
 
       _sortList(results);
       filteredCountries.assignAll(results);
+      _resetPagination();
       _log('Displayed ${results.length} countries for region "$region"');
     } catch (e) {
       _log('ERROR in _fetchByRegion: $e — falling back to local filter');
@@ -298,6 +306,7 @@ class CountryController extends GetxController {
     if (searchQuery.value.trim().isNotEmpty) {
       _sortList(filteredCountries);
       filteredCountries.refresh();
+      _resetPagination();
     } else {
       _applyFilters();
     }
@@ -326,6 +335,7 @@ class CountryController extends GetxController {
 
     _sortList(result);
     filteredCountries.assignAll(result);
+    _resetPagination();
     _log('_applyFilters() — showing ${result.length} countries');
   }
 
@@ -349,6 +359,34 @@ class CountryController extends GetxController {
         break;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // PAGINATION
+  // ---------------------------------------------------------------------------
+  void _resetPagination() {
+    _currentPage = 0;
+    final int end = pageSize.clamp(0, filteredCountries.length);
+    displayedCountries.assignAll(filteredCountries.sublist(0, end));
+    _currentPage = 1;
+    _log('_resetPagination() — showing $end of ${filteredCountries.length}');
+  }
+
+  void loadNextPage() {
+    if (isLoadingMore.value) return;
+    final int totalLoaded = _currentPage * pageSize;
+    if (totalLoaded >= filteredCountries.length) return;
+
+    isLoadingMore.value = true;
+    final int end =
+        (totalLoaded + pageSize).clamp(0, filteredCountries.length);
+    displayedCountries.addAll(filteredCountries.sublist(totalLoaded, end));
+    _currentPage++;
+    isLoadingMore.value = false;
+    _log('loadNextPage() — now showing ${displayedCountries.length} of ${filteredCountries.length}');
+  }
+
+  bool get hasMorePages =>
+      _currentPage * pageSize < filteredCountries.length;
 
   // ---------------------------------------------------------------------------
   // HELPERS — resolve border codes to names
