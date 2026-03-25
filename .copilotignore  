@@ -1,0 +1,25 @@
+# Ignore generated files
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+ 
+# Ignore platform-specific build files
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/Runner.xcworkspace/
+ 
+# Ignore secrets/config
+.env
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+ 
+# Ignore large/generated code
+*.g.dart
+*.freezed.dart
+ 
+# Ignore logs
+*.log

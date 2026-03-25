@@ -1,0 +1,9 @@
+
+{
+	// Copilot and AI agent custom instructions and prompt templates
+	"github.copilot.instructionsPath": ".github/copilot-instructions.md",
+	"github.copilot.promptsPath": ".github/prompts/",
+	// Optional: for other AI tools or extensions that support custom prompt/instruction paths
+	"ai.promptsFolder": ".github/prompts/",
+	"ai.instructionsFile": ".github/copilot-instructions.md"
+}
